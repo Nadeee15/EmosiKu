@@ -6,6 +6,7 @@ from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import time
+import os
 
 st.set_page_config(page_title="EmosiKu — Sistem Deteksi Psikologis", layout="wide")
 
@@ -19,18 +20,33 @@ st.markdown('''
 <div class="leaf-deco leaf-3"></div>
 ''', unsafe_allow_html=True)
 
+# ── LABEL MAPPING ──────────────────────────────────────────────────────
+LABEL_POSITIVE = 0  # ← GANTI ke 1 jika hasil masih terbalik
+
 @st.cache_resource(show_spinner=False)
 def load_model():
-    model_path = "indobenchmark/indobert-base-p1"
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=2)
+    local_model_path = "./model"
+    if os.path.exists(local_model_path):
+        tokenizer = AutoTokenizer.from_pretrained(local_model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(local_model_path)
+    else:
+        model_path = "indobenchmark/indobert-base-p1"
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=2)
+    model.eval()
     return tokenizer, model
 
 @st.cache_resource(show_spinner=False)
 def load_stopword():
     return StopWordRemoverFactory().create_stop_word_remover()
 
+# ── Load model & tampilkan toast DI LUAR cache ──
 tokenizer, model = load_model()
+if os.path.exists("./model"):
+    st.toast("✅ Model fine-tuned berhasil dimuat!", icon="🤖")
+else:
+    st.toast("⚠️ Menggunakan base model IndoBERT.", icon="⚠️")
+
 stopword = load_stopword()
 
 def clean_text(text):
@@ -45,6 +61,9 @@ def predict(text):
     probs = torch.softmax(out.logits, dim=-1)[0]
     pred = torch.argmax(out.logits, dim=-1).item()
     return pred, probs[pred].item(), probs.numpy()
+
+def is_positive(pred):
+    return pred == LABEL_POSITIVE
 
 if 'history' not in st.session_state:
     st.session_state['history'] = []
@@ -112,24 +131,28 @@ with col1:
             progress_bar.empty()
 
             pred, conf, probs = predict(user_input)
+
+            terindikasi   = is_positive(pred)
+            prob_normal   = probs[1 - LABEL_POSITIVE]
+            prob_indikasi = probs[LABEL_POSITIVE]
+
             st.session_state['history'].append({
-                "Waktu": datetime.now().strftime("%H:%M"),
+                "Waktu"        : datetime.now().strftime("%H:%M"),
                 "Cuplikan Teks": user_input[:48] + "...",
-                "Status": "Terindikasi" if pred == 1 else "Normal",
-                "Skor": f"{conf:.1%}"
+                "Status"       : "Terindikasi" if terindikasi else "Normal",
+                "Skor"         : f"{conf:.1%}"
             })
 
             with col2:
                 st.markdown('<div class="metric-card"><div class="card-label">Hasil Diagnostik</div>', unsafe_allow_html=True)
 
-                # Animasi nafas
                 st.markdown('''
                 <div class="breath-ring">
                     <div class="breath-inner"></div>
                 </div>
                 ''', unsafe_allow_html=True)
 
-                if pred == 1:
+                if terindikasi:
                     st.markdown(f'''
                     <div class="alert-box">
                         <h2>Terindikasi</h2>
@@ -147,8 +170,8 @@ with col1:
                     ''', unsafe_allow_html=True)
 
                 st.markdown('<div class="dist-label">Distribusi Probabilitas</div>', unsafe_allow_html=True)
-                st.progress(float(probs[0]), text=f"Kondisi Normal  {probs[0]:.1%}")
-                st.progress(float(probs[1]), text=f"Indikasi Klinis  {probs[1]:.1%}")
+                st.progress(float(prob_normal),   text=f"Kondisi Normal  {prob_normal:.1%}")
+                st.progress(float(prob_indikasi), text=f"Indikasi Klinis  {prob_indikasi:.1%}")
 
                 st.markdown('''
                 <div class="insight-strip">
