@@ -101,7 +101,12 @@ with col1:
         label_visibility="collapsed"
     )
 
-    st.warning("**Keterbatasan Model:** Karena bias pada dataset pelatihan, sistem mungkin kurang akurat saat memproses teks bernada sangat positif (contoh: *'aku bahagia'*) atau struktur kalimat negasi. Harap gunakan hasil prediksi dengan bijak sebagai bahan evaluasi riset.", icon="⚠️")
+    st.markdown('''
+    <div style="margin-top: 15px; margin-bottom: 15px; padding: 14px 18px; border-radius: 10px; background-color: #fff9e6; border: 1px solid #ffda6a; border-left: 5px solid #ffc107; color: #664d03; font-size: 0.9rem; line-height: 1.5;">
+        <strong style="color: #997404;">⚠️ Keterbatasan Model:</strong><br>
+        Karena bias pada dataset pelatihan, sistem mungkin kurang akurat saat memproses teks bernada sangat positif (contoh: <em>'aku bahagia'</em>) atau struktur kalimat negasi. Harap gunakan hasil prediksi dengan bijak sebagai bahan evaluasi riset.
+    </div>
+    ''', unsafe_allow_html=True)
 
     if st.button("Analisis Teks"):
         if user_input:
