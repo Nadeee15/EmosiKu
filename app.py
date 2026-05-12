@@ -6,7 +6,6 @@ from datetime import datetime
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import time
-import os
 
 st.set_page_config(page_title="EmosiKu — Sistem Deteksi Psikologis", layout="wide")
 
@@ -20,27 +19,11 @@ st.markdown('''
 <div class="leaf-deco leaf-3"></div>
 ''', unsafe_allow_html=True)
 
-# ── LABEL MAPPING ──────────────────────────────────────────────────────
-# Sesuaikan dengan label di dataset training kamu:
-# Jika di dataset: 0 = Normal, 1 = Terindikasi → LABEL_POSITIVE = 1
-# Jika di dataset: 0 = Terindikasi, 1 = Normal → LABEL_POSITIVE = 0
-LABEL_POSITIVE = 0  # ← GANTI ke 1 jika masih terbalik setelah dicoba
-
 @st.cache_resource(show_spinner=False)
 def load_model():
-    # Prioritas: load model fine-tuned lokal dulu
-    local_model_path = "./model"  # Ganti sesuai path model fine-tuned kamu
-    if os.path.exists(local_model_path):
-        st.toast("✅ Memuat model fine-tuned lokal...", icon="🤖")
-        tokenizer = AutoTokenizer.from_pretrained(local_model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(local_model_path)
-    else:
-        # Fallback ke IndoBERT base (PERHATIAN: hasil tidak akurat tanpa fine-tuning)
-        st.toast("⚠️ Model fine-tuned tidak ditemukan, menggunakan base model.", icon="⚠️")
-        model_path = "indobenchmark/indobert-base-p1"
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=2)
-    model.eval()
+    model_path = "indobenchmark/indobert-base-p1"
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=2)
     return tokenizer, model
 
 @st.cache_resource(show_spinner=False)
@@ -62,10 +45,6 @@ def predict(text):
     probs = torch.softmax(out.logits, dim=-1)[0]
     pred = torch.argmax(out.logits, dim=-1).item()
     return pred, probs[pred].item(), probs.numpy()
-
-def is_positive(pred):
-    """Cek apakah prediksi = Terindikasi, dengan memperhitungkan label mapping."""
-    return pred == LABEL_POSITIVE
 
 if 'history' not in st.session_state:
     st.session_state['history'] = []
@@ -133,18 +112,10 @@ with col1:
             progress_bar.empty()
 
             pred, conf, probs = predict(user_input)
-
-            # ── Tentukan label dengan mapping yang benar ──
-            terindikasi = is_positive(pred)
-
-            # Probabilitas dengan label mapping yang benar
-            prob_normal    = probs[1 - LABEL_POSITIVE]
-            prob_indikasi  = probs[LABEL_POSITIVE]
-
             st.session_state['history'].append({
                 "Waktu": datetime.now().strftime("%H:%M"),
                 "Cuplikan Teks": user_input[:48] + "...",
-                "Status": "Terindikasi" if terindikasi else "Normal",
+                "Status": "Terindikasi" if pred == 1 else "Normal",
                 "Skor": f"{conf:.1%}"
             })
 
@@ -158,7 +129,7 @@ with col1:
                 </div>
                 ''', unsafe_allow_html=True)
 
-                if terindikasi:
+                if pred == 1:
                     st.markdown(f'''
                     <div class="alert-box">
                         <h2>Terindikasi</h2>
@@ -176,8 +147,8 @@ with col1:
                     ''', unsafe_allow_html=True)
 
                 st.markdown('<div class="dist-label">Distribusi Probabilitas</div>', unsafe_allow_html=True)
-                st.progress(float(prob_normal),   text=f"Kondisi Normal  {prob_normal:.1%}")
-                st.progress(float(prob_indikasi), text=f"Indikasi Klinis  {prob_indikasi:.1%}")
+                st.progress(float(probs[0]), text=f"Kondisi Normal  {probs[0]:.1%}")
+                st.progress(float(probs[1]), text=f"Indikasi Klinis  {probs[1]:.1%}")
 
                 st.markdown('''
                 <div class="insight-strip">
