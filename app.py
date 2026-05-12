@@ -21,7 +21,8 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # ── LABEL MAPPING ──────────────────────────────────────────────────────
-LABEL_POSITIVE = 0  # ← GANTI ke 1 jika hasil masih terbalik
+# Dari notebook: label 0 = Non-Depresi, label 1 = Depresi
+LABEL_POSITIVE = 1  # label 1 = Depresi (terindikasi)
 
 @st.cache_resource(show_spinner=False)
 def load_model():
@@ -133,8 +134,8 @@ with col1:
             pred, conf, probs = predict(user_input)
 
             terindikasi   = is_positive(pred)
-            prob_normal   = probs[1 - LABEL_POSITIVE]
-            prob_indikasi = probs[LABEL_POSITIVE]
+            prob_normal   = probs[0]   # index 0 = Non-Depresi
+            prob_indikasi = probs[1]   # index 1 = Depresi
 
             st.session_state['history'].append({
                 "Waktu"        : datetime.now().strftime("%H:%M"),
