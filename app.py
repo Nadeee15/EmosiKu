@@ -6,7 +6,6 @@ from datetime import datetime, timezone, timedelta
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import time
-import os
 
 st.set_page_config(page_title="EmosiKu — Sistem Deteksi Psikologis", layout="wide")
 
@@ -26,18 +25,9 @@ LABEL_POSITIVE = 1  # label 1 = Depresi (terindikasi)
 
 @st.cache_resource(show_spinner=False)
 def load_model():
-    local_model_path = "./model"
-    if os.path.exists(local_model_path):
-        tokenizer = AutoTokenizer.from_pretrained(local_model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(
-            local_model_path,
-            num_labels=2,
-            ignore_mismatched_sizes=True
-        )
-    else:
-        model_path = "indobenchmark/indobert-base-p1"
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=2)
+    MODEL_NAME = "Nadeee15/EmosiKu-model"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
     model.eval()
     return tokenizer, model
 
@@ -47,10 +37,7 @@ def load_stopword():
 
 # ── Load model & tampilkan toast DI LUAR cache ──
 tokenizer, model = load_model()
-if os.path.exists("./model"):
-    st.toast("✅ Model fine-tuned berhasil dimuat!", icon="🤖")
-else:
-    st.toast("⚠️ Menggunakan base model IndoBERT.", icon="⚠️")
+st.toast("✅ Model EmosiKu berhasil dimuat dari HuggingFace!", icon="🤖")
 
 stopword = load_stopword()
 
