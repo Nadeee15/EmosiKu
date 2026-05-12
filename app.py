@@ -101,6 +101,8 @@ with col1:
         label_visibility="collapsed"
     )
 
+    st.warning("**Keterbatasan Model:** Karena bias pada dataset pelatihan, sistem mungkin kurang akurat saat memproses teks bernada sangat positif (contoh: *'aku bahagia'*) atau struktur kalimat negasi. Harap gunakan hasil prediksi dengan bijak sebagai bahan evaluasi riset.", icon="⚠️")
+
     if st.button("Analisis Teks"):
         if user_input:
             progress_bar = st.progress(0)
