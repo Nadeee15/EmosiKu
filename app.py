@@ -2,7 +2,7 @@ import streamlit as st
 import torch
 import re
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import time
@@ -29,7 +29,11 @@ def load_model():
     local_model_path = "./model"
     if os.path.exists(local_model_path):
         tokenizer = AutoTokenizer.from_pretrained(local_model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(local_model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            local_model_path,
+            num_labels=2,
+            ignore_mismatched_sizes=True
+        )
     else:
         model_path = "indobenchmark/indobert-base-p1"
         tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -138,7 +142,7 @@ with col1:
             prob_indikasi = probs[1]   # index 1 = Depresi
 
             st.session_state['history'].append({
-                "Waktu"        : datetime.now().strftime("%H:%M"),
+                "Waktu"        : datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M"),
                 "Cuplikan Teks": user_input[:48] + "...",
                 "Status"       : "Terindikasi" if terindikasi else "Normal",
                 "Skor"         : f"{conf:.1%}"
